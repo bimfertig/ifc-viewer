@@ -19,9 +19,9 @@
   </style>
 
   <!-- Gepinnte, kompatible Versionen -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web-ifc-viewer@1.0.161/dist/web-ifc-viewer.min.js"></script>
+  <script defer src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+  <script defer src="https://unpkg.com/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+  <script defer src="https://unpkg.com/web-ifc-viewer@1.0.161/dist/web-ifc-viewer.min.js"></script>
 </head>
 <body>
   <div id="topbar">
@@ -47,10 +47,12 @@
     const hideLoading=()=>{ loading.style.display='none'; };
     const showError=(m)=>{ errmsg.textContent=m; errBox.style.display='block'; };
 
-    // Prüfen, ob Viewer-Klasse geladen ist
-    if (typeof window.IfcViewerAPI === 'undefined') {
-      showError('IfcViewerAPI nicht verfügbar. CDN konnte nicht geladen werden. Versuche Strg+F5.');
-    }
+    // Wenn CDN geblockt ist, Hinweis zeigen
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.IfcViewerAPI === 'undefined') {
+        showError('web-ifc-viewer konnte nicht geladen werden (CDN blockiert?). Versuche Strg+F5 oder Inkognito ohne Erweiterungen.');
+      }
+    });
 
     // Viewer initialisieren
     let viewer;
@@ -58,7 +60,7 @@
       const container = byId('viewer');
       viewer = new IfcViewerAPI({ container, backgroundColor: new THREE.Color(0xffffff) });
       viewer.addAxes(); viewer.addGrid();
-      viewer.IFC.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.45/');
+      viewer.IFC.setWasmPath('https://unpkg.com/web-ifc@0.0.45/');
       hideLoading();
     } catch (e) {
       showError('Viewer-Initialisierung fehlgeschlagen: ' + e);
