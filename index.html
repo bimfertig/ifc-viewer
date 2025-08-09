@@ -3,119 +3,109 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IFC Viewer – mit Ladeanzeige</title>
+  <title>IFC Viewer – stabil</title>
   <style>
-    html, body { height:100%; margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    #topbar { position:fixed; top:0; left:0; right:0; height:48px; display:flex; align-items:center; gap:12px; padding:0 12px; background:#111; color:#fff; z-index:20; }
-    #viewer-container { position:absolute; inset:48px 0 0 0; }
-    #help { position:fixed; right:8px; bottom:8px; background:rgba(0,0,0,.65); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; z-index:10; }
-    button { height:28px; padding:0 10px; border:0; border-radius:6px; background:#2D6CDF; color:#fff; cursor:pointer; }
-    input[type="text"] { height:28px; border:1px solid #ccc; border-radius:6px; padding:0 8px; width:340px; }
-    #loading { position:fixed; inset:48px 0 0 0; display:none; align-items:center; justify-content:center; background:rgba(255,255,255,.85); z-index:30; flex-direction:column; gap:12px; }
-    .spinner { width:42px; height:42px; border:4px solid rgba(0,0,0,.15); border-top-color:#2D6CDF; border-radius:50%; animation:spin 1s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    #error { position:fixed; left:50%; top:70px; transform:translateX(-50%); background:#FFE6E6; border:1px solid #FFB3B3; color:#761B18; padding:10px 12px; border-radius:8px; display:none; z-index:40; max-width:min(90vw,700px); }
-    #error button { background:transparent; color:inherit; border:0; margin-left:8px; cursor:pointer; text-decoration:underline; }
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    #topbar{position:fixed;top:0;left:0;right:0;height:48px;display:flex;align-items:center;gap:12px;padding:0 12px;background:#111;color:#fff;z-index:20}
+    #viewer{position:absolute;inset:48px 0 0 0}
+    #help{position:fixed;right:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;padding:8px 10px;border-radius:8px;font-size:12px;z-index:10}
+    button{height:28px;padding:0 10px;border:0;border-radius:6px;background:#2D6CDF;color:#fff;cursor:pointer}
+    input[type=text]{height:28px;border:1px solid #ccc;border-radius:6px;padding:0 8px;width:340px}
+    #loading{position:fixed;inset:48px 0 0 0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.85);z-index:30;flex-direction:column;gap:12px}
+    .spin{width:42px;height:42px;border:4px solid rgba(0,0,0,.15);border-top-color:#2D6CDF;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #err{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:#FFE6E6;border:1px solid #FFB3B3;color:#761B18;padding:10px 12px;border-radius:8px;display:none;z-index:40;max-width:min(90vw,700px)}
+    #err button{background:transparent;border:0;text-decoration:underline;cursor:pointer;color:inherit}
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/web-ifc-viewer@latest/dist/web-ifc-viewer.min.js"></script>
+
+  <!-- Gepinnte, bekannte Kombination -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web-ifc-viewer@1.0.161/dist/web-ifc-viewer.min.js"></script>
 </head>
 <body>
   <div id="topbar">
     <strong>IFC Viewer</strong>
     <label><input id="file" type="file" accept=".ifc,.ifczip"></label>
-    <input id="url" type="text" placeholder="z. B. ./models/Testprojekt.ifc oder vollständige URL">
-    <button id="loadUrl">Laden</button>
+    <input id="url" type="text" placeholder="z. B. models/Testprojekt.ifc oder vollständige URL">
+    <button id="loadBtn">Laden</button>
     <div style="flex:1"></div>
     <button id="fit">Ansicht zentrieren</button>
     <button id="grid">Grid/Achsen</button>
   </div>
 
-  <div id="viewer-container"></div>
-  <div id="help">Tipp: Mit <code>?src=./models/Testprojekt.ifc</code> startet der Viewer direkt mit diesem Modell.</div>
+  <div id="viewer"></div>
+  <div id="help">Tipp: <code>?src=models/Testprojekt.ifc</code> lädt direkt dein Modell.</div>
 
-  <div id="loading">
-    <div class="spinner" aria-label="Lade…"></div>
-    <div id="loadtext">Lädt…</div>
-  </div>
-
-  <div id="error">
-    <strong>Fehler:</strong>
-    <span id="errtxt"></span>
-    <button id="errclose">Schließen</button>
-  </div>
+  <div id="loading"><div class="spin" aria-label="Lädt…"></div><div id="loadtxt">Initialisiere 3D-Engine…</div></div>
+  <div id="err"><strong>Fehler:</strong> <span id="errmsg"></span> <button onclick="document.getElementById('err').style.display='none'">Schließen</button></div>
 
   <script>
-    // UI Helper-Funktionen
-    const loading = document.getElementById('loading');
-    const loadtext = document.getElementById('loadtext');
-    const errorBox = document.getElementById('error');
-    const errtxt = document.getElementById('errtxt');
+    const byId = (id)=>document.getElementById(id);
+    const loading = byId('loading'), loadtxt = byId('loadtxt'), errBox = byId('err'), errmsg = byId('errmsg');
+    const showLoading=(m)=>{ loadtxt.textContent=m||'Lädt…'; loading.style.display='flex'; };
+    const hideLoading=()=>{ loading.style.display='none'; };
+    const showError=(m)=>{ errmsg.textContent=m; errBox.style.display='block'; };
 
-    document.getElementById('errclose').onclick = () => errorBox.style.display = 'none';
-    const showLoading = msg => { loadtext.textContent = msg || 'Lädt…'; loading.style.display = 'flex'; };
-    const hideLoading = () => { loading.style.display = 'none'; };
-    const showError = msg => { errtxt.textContent = msg; errorBox.style.display = 'block'; };
+    // 1) Prüfe, ob IfcViewerAPI da ist (sonst bleibt "Initialisiere..." stehen)
+    if (typeof window.IfcViewerAPI === 'undefined') {
+      showError('IfcViewerAPI nicht verfügbar. CDN konnte nicht geladen werden. Versuche hartes Neuladen (Strg+F5) oder nutze diese Versionen: three@0.152.2, web-ifc-viewer@1.0.161.');
+    }
 
-    // IFC Viewer Setup
-    const container = document.getElementById('viewer-container');
-    showLoading('Initialisiere 3D-Engine…');
+    let viewer;
+    try {
+      const container = byId('viewer');
+      viewer = new IfcViewerAPI({ container, backgroundColor: new THREE.Color(0xffffff) });
+      viewer.addAxes(); viewer.addGrid();
+      viewer.IFC.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.45/');
+      hideLoading();
+    } catch (e) {
+      showError('Viewer-Initialisierung fehlgeschlagen: ' + e);
+      console.error(e);
+    }
 
-    const viewer = new IfcViewerAPI({ container, backgroundColor: new THREE.Color(0xffffff) });
-    viewer.addAxes();
-    viewer.addGrid();
-    viewer.IFC.setWasmPath("https://cdn.jsdelivr.net/npm/web-ifc@0.0.45/");
-
-    hideLoading();
-
-    // Laden aus URL
-    async function loadFromUrl(src) {
-      if (!src) return;
-      try {
-        const u = new URL(src, location.href).toString();
-        showLoading('Lade: ' + u);
-        await viewer.loadIfcUrl(u);
+    async function loadFromUrl(src){
+      if(!src) return;
+      try{
+        const abs = new URL(src, location.href).toString();
+        showLoading('Lade: ' + abs);
+        await viewer.loadIfcUrl(abs);
         await viewer.context.ifcCamera.fitModelToFrame();
         viewer.shadowDropper.renderShadow();
         hideLoading();
-      } catch (err) {
+      }catch(e){
         hideLoading();
-        showError('Konnte die IFC-URL nicht laden: ' + err);
-        console.error(err);
+        showError('Konnte die IFC-URL nicht laden: ' + e);
+        console.error(e);
       }
     }
 
-    // Laden aus Datei
-    async function loadFromFile(file) {
-      if (!file) return;
-      try {
-        showLoading('Lade Datei: ' + (file.name || '…'));
+    async function loadFromFile(file){
+      if(!file) return;
+      try{
+        showLoading('Lade Datei: ' + (file.name||'…'));
         const url = URL.createObjectURL(file);
         await viewer.loadIfcUrl(url);
         await viewer.context.ifcCamera.fitModelToFrame();
         viewer.shadowDropper.renderShadow();
         hideLoading();
-      } catch (err) {
+      }catch(e){
         hideLoading();
-        showError('Konnte die IFC-Datei nicht laden: ' + err);
-        console.error(err);
+        showError('Konnte die IFC-Datei nicht laden: ' + e);
+        console.error(e);
       }
     }
 
-    // Event-Handler
-    document.getElementById('file').onchange = e => loadFromFile(e.target.files && e.target.files[0]);
-    document.getElementById('loadUrl').onclick = () => loadFromUrl(document.getElementById('url').value.trim());
-    document.getElementById('fit').onclick = () => viewer.context.ifcCamera.fitModelToFrame();
-    document.getElementById('grid').onclick = () => { viewer.axes.active = !viewer.axes.active; viewer.grid.active = !viewer.grid.active; };
+    byId('file').onchange = (e)=> loadFromFile(e.target.files && e.target.files[0]);
+    byId('loadBtn').onclick = ()=> loadFromUrl(byId('url').value.trim());
+    byId('fit').onclick = ()=> viewer && viewer.context.ifcCamera.fitModelToFrame();
+    byId('grid').onclick = ()=> { if(!viewer) return; viewer.axes.active=!viewer.axes.active; viewer.grid.active=!viewer.grid.active; };
 
     // Auto-Start via ?src=
-    const params = new URLSearchParams(location.search);
-    const startSrc = params.get('src');
-    if (startSrc) {
-      document.getElementById('url').value = startSrc;
-      loadFromUrl(startSrc);
-    }
+    (function(){
+      const src = new URLSearchParams(location.search).get('src');
+      if (src) { byId('url').value = src; loadFromUrl(src); }
+    })();
   </script>
 </body>
 </html>
