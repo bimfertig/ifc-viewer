@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IFC Viewer – Minimal</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 48px;
+      display: flex; align-items: center; gap: 12px; padding: 0 12px;
+      background: #111; color: #fff; z-index: 10;
+    }
+    #topbar input[type="file"] { color: #fff; }
+    #topbar .spacer { flex: 1; }
+    #viewer-container { position: absolute; inset: 48px 0 0 0; }
+    #help {
+      position: fixed; right: 8px; bottom: 8px; background: rgba(0,0,0,.65);
+      color: #fff; padding: 8px 10px; border-radius: 8px; font-size: 12px;
+    }
+    button {
+      height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
+      background: #2d6cdf; color: white; cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: default; }
+    input[type="text"] { height: 28px; border: 1px solid #ccc; border-radius: 6px; padding: 0 8px; width: 340px; }
+  </style>
+
+  <!-- Three.js and IFC.js viewer from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web-ifc-viewer@latest/dist/web-ifc-viewer.min.js"></script>
+</head>
+<body>
+  <div id="topbar">
+    <strong>IFC Viewer</strong>
+    <label>
+      <input id="file" type="file" accept=".ifc,.ifczip" />
+    </label>
+    <input id="url" type="text" placeholder="oder IFC-URL einfügen und Laden klicken" />
+    <button id="loadUrl">Laden</button>
+    <div class="spacer"></div>
+    <button id="fit">Ansicht zentrieren</button>
+    <button id="grid">Grid/Achsen</button>
+  </div>
+
+  <div id="viewer-container"></div>
+
+  <div id="help">Datei laden: oben links .ifc auswählen – oder eine öffentliche URL einfügen.<br/>
+  Tip: Mit der URL-Query <code>?src=https://…/modell.ifc</code> startet der Viewer direkt mit diesem Modell.</div>
+
+  <script>
+    // Container und Viewer
+    const container = document.getElementById('viewer-container');
+    const viewer = new IfcViewerAPI({ container, backgroundColor: new THREE.Color(0xffffff) });
+    viewer.addAxes();
+    viewer.addGrid();
+
+    // Optional: Pfad für WebIFC WASM (nicht zwingend, aber stabiler mit fixer Version)
+    viewer.IFC.setWasmPath("https://cdn.jsdelivr.net/npm/web-ifc@0.0.45/");
+
+    async function loadFromFile(file) {
+      if (!file) return;
+      try {
+        const url = URL.createObjectURL(file);
+        await viewer.loadIfcUrl(url);
+        viewer.shadowDropper.renderShadow();
+      } catch (err) {
+        alert("Konnte die IFC-Datei nicht laden: " + err);
+      }
+    }
+
+    async function loadFromUrl(src) {
+      if (!src) return;
+      try {
+        await viewer.loadIfcUrl(src);
+        viewer.shadowDropper.renderShadow();
+      } catch (err) {
+        alert("Konnte die IFC-URL nicht laden: " + err);
+      }
+    }
+
+    // Datei-Upload
+    document.getElementById('file').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      await loadFromFile(file);
+    });
+
+    // URL-Load
+    document.getElementById('loadUrl').addEventListener('click', async () => {
+      const src = document.getElementById('url').value.trim();
+      await loadFromUrl(src);
+    });
+
+    // Fit / Grid
+    document.getElementById('fit').addEventListener('click', () => viewer.context.ifcCamera.fitModelToFrame());
+    document.getElementById('grid').addEventListener('click', () => {
+      viewer.axes.active = !viewer.axes.active;
+      viewer.grid.active = !viewer.grid.active;
+    });
+
+    // Auto-Start via ?src=
+    const params = new URLSearchParams(location.search);
+    const startSrc = params.get('src');
+    if (startSrc) {
+      document.getElementById('url').value = startSrc;
+      loadFromUrl(startSrc);
+    }
+  </script>
+</body>
+</html>
