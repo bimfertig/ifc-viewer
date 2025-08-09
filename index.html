@@ -18,7 +18,7 @@
     #err button{background:transparent;border:0;text-decoration:underline;cursor:pointer;color:inherit}
   </style>
 
-  <!-- Gepinnte, bekannte Kombination -->
+  <!-- Gepinnte, kompatible Versionen -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web-ifc-viewer@1.0.161/dist/web-ifc-viewer.min.js"></script>
@@ -47,11 +47,12 @@
     const hideLoading=()=>{ loading.style.display='none'; };
     const showError=(m)=>{ errmsg.textContent=m; errBox.style.display='block'; };
 
-    // 1) Prüfe, ob IfcViewerAPI da ist (sonst bleibt "Initialisiere..." stehen)
+    // Prüfen, ob Viewer-Klasse geladen ist
     if (typeof window.IfcViewerAPI === 'undefined') {
-      showError('IfcViewerAPI nicht verfügbar. CDN konnte nicht geladen werden. Versuche hartes Neuladen (Strg+F5) oder nutze diese Versionen: three@0.152.2, web-ifc-viewer@1.0.161.');
+      showError('IfcViewerAPI nicht verfügbar. CDN konnte nicht geladen werden. Versuche Strg+F5.');
     }
 
+    // Viewer initialisieren
     let viewer;
     try {
       const container = byId('viewer');
@@ -65,7 +66,7 @@
     }
 
     async function loadFromUrl(src){
-      if(!src) return;
+      if(!src || !viewer) return;
       try{
         const abs = new URL(src, location.href).toString();
         showLoading('Lade: ' + abs);
@@ -81,7 +82,7 @@
     }
 
     async function loadFromFile(file){
-      if(!file) return;
+      if(!file || !viewer) return;
       try{
         showLoading('Lade Datei: ' + (file.name||'…'));
         const url = URL.createObjectURL(file);
@@ -96,10 +97,10 @@
       }
     }
 
-    byId('file').onchange = (e)=> loadFromFile(e.target.files && e.target.files[0]);
-    byId('loadBtn').onclick = ()=> loadFromUrl(byId('url').value.trim());
-    byId('fit').onclick = ()=> viewer && viewer.context.ifcCamera.fitModelToFrame();
-    byId('grid').onclick = ()=> { if(!viewer) return; viewer.axes.active=!viewer.axes.active; viewer.grid.active=!viewer.grid.active; };
+    byId('file').onchange = e => loadFromFile(e.target.files && e.target.files[0]);
+    byId('loadBtn').onclick = () => loadFromUrl(byId('url').value.trim());
+    byId('fit').onclick = () => viewer && viewer.context.ifcCamera.fitModelToFrame();
+    byId('grid').onclick = () => { if(!viewer) return; viewer.axes.active = !viewer.axes.active; viewer.grid.active = !viewer.grid.active; };
 
     // Auto-Start via ?src=
     (function(){
